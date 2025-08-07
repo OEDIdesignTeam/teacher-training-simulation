@@ -1,0 +1,456 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Training Simulation</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Configure Tailwind to use UVA brand colors
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'uva-blue': '#232D4B',
+              'uva-orange': '#E57200',
+              'uva-blue-light': '#C8CBD2',
+              'uva-red': '#DF1E43',
+              'uva-green': '#62BB46',
+            },
+            fontFamily: {
+              sans: ['Source Sans 3', 'sans-serif'],
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-in-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: 0, transform: 'translateY(-10px)' },
+                '100%': { opacity: 1, transform: 'translateY(0)' },
+              },
+            },
+          }
+        }
+      }
+    </script>
+    
+    <!-- React Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel (for in-browser JSX translation) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "vite": "https://esm.sh/vite@^7.1.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.0.0"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      // All application code is now inside this single script tag.
+      // No build step is required.
+      
+      const { useState, useCallback, useMemo, useEffect } = React;
+
+      // **********************************
+      // CONSTANTS
+      // **********************************
+      const STUDENTS = ['Alex', 'Jordan', 'Casey', 'Morgan', 'Riley', 'Avery', 'Quinn', 'Taylor', 'Cameron', 'Drew', 'Sage'];
+
+      const RESPONSE_TEXTS = {
+          'strong-praise': 'Strong Praise',
+          'mild-praise': 'Mild Praise',
+          'no-comment': 'No Comment',
+          'mild-reprimand': 'Mild Reprimand',
+          'strong-reprimand': 'Strong Reprimand'
+      };
+
+      const RESPONSE_COLORS = {
+        'strong-praise': 'bg-uva-orange hover:bg-orange-600 text-white',
+        'mild-praise': 'bg-uva-orange/80 hover:bg-uva-orange text-white',
+        'no-comment': 'bg-uva-blue-light hover:bg-slate-400 text-uva-blue',
+        'mild-reprimand': 'bg-uva-blue/80 hover:bg-uva-blue text-white',
+        'strong-reprimand': 'bg-uva-blue hover:bg-slate-800 text-white',
+      };
+
+      const generateArrivalTime = () => {
+          // Random arrival time between 8:15 and 8:45
+          return Math.round(Math.random() * 30 + 15);
+      };
+
+      const formatTime = (minutes) => `8:${minutes.toString().padStart(2, '0')}`;
+
+      // **********************************
+      // SHARED COMPONENTS
+      // **********************************
+      const Card = ({ children, className }) => (
+        <div className={`bg-white rounded-xl shadow-lg animate-fade-in ${className || ''}`}>
+          {children}
+        </div>
+      );
+
+      const Button = ({ variant = 'primary', children, className, ...props }) => {
+        const baseClasses = 'w-full text-lg font-bold py-3 px-6 rounded-lg transition-transform duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100';
+        const variantClasses = {
+          primary: 'bg-uva-blue text-white hover:bg-slate-800 focus:ring-uva-orange/50',
+          secondary: 'bg-uva-orange text-white hover:bg-orange-600 focus:ring-uva-blue/50',
+        };
+        return (
+          <button className={`${baseClasses} ${variantClasses[variant]} ${className || ''}`} {...props}>
+            {children}
+          </button>
+        );
+      };
+      
+      const ProgressBar = ({ current, total }) => {
+        const percentage = (current / total) * 100;
+        return (
+          <div className="mb-4">
+            <p className="text-center text-sm font-semibold text-uva-orange mb-2">
+              Student {current} of {total}
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-uva-blue h-2.5 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${percentage}%` }}
+              ></div>
+            </div>
+          </div>
+        );
+      };
+
+      const ClockDisplay = ({ targetMinutes, animate = true, onAnimationComplete }) => {
+          const [displayMinutes, setDisplayMinutes] = useState(animate ? 20 : targetMinutes);
+          const [isAnimating, setIsAnimating] = useState(animate);
+
+          useEffect(() => {
+              if (!animate) {
+                  setDisplayMinutes(targetMinutes);
+                  setIsAnimating(false);
+                  return;
+              }
+
+              setIsAnimating(true);
+              setDisplayMinutes(20);
+              
+              const animationInterval = setInterval(() => {
+                  setDisplayMinutes(prev => {
+                      if (prev < targetMinutes) {
+                          return prev + 1;
+                      }
+                      clearInterval(animationInterval);
+                      setIsAnimating(false);
+                      if (onAnimationComplete) onAnimationComplete();
+                      return targetMinutes;
+                  });
+              }, 80);
+
+              return () => clearInterval(animationInterval);
+          }, [targetMinutes, animate, onAnimationComplete]);
+
+          const timeColor = targetMinutes > 30 ? 'text-uva-red' : 'text-uva-green';
+          const borderColor = targetMinutes > 30 ? 'border-uva-red' : 'border-uva-green';
+          const containerClasses = `font-mono text-5xl sm:text-7xl font-bold text-center bg-slate-100 p-6 rounded-lg border-4 transition-colors duration-300 ${isAnimating ? 'text-slate-800 border-slate-300' : `${timeColor} ${borderColor}`}`;
+          
+          return (
+              <div className={containerClasses}>
+                  {formatTime(displayMinutes)}
+              </div>
+          );
+      };
+
+      // **********************************
+      // PHASE COMPONENTS
+      // **********************************
+      const IntroPhase = ({ onStart }) => (
+        <Card className="p-8 md:p-12">
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-uva-blue">Teacher Training Simulation</h1>
+            <h2 className="text-xl md:text-2xl font-semibold text-uva-orange mt-1">Student Punctuality Intervention Study</h2>
+          </div>
+          <div className="mt-8 text-slate-700 space-y-4 text-left bg-blue-50/50 p-6 rounded-lg border border-uva-blue-light">
+              <h3 className="text-xl font-bold text-uva-blue">Welcome, Teacher!</h3>
+              <p>You will work with 11 different students who have been arriving late to class. You encourage students to arrive by 8:25, so they have time to get set up. But school rules are that you must arrive by 8:30.</p>
+              <p className="font-semibold">For each student, you will:</p>
+              <ol className="list-decimal list-inside space-y-2 pl-4">
+                  <li>Observe their current arrival time.</li>
+                  <li>Choose how to respond (praise, reprimand, or no comment).</li>
+                  <li>See how their arrival time changes the next day.</li>
+                  <li>Evaluate whether your intervention was effective.</li>
+              </ol>
+              <p className="font-bold text-uva-blue">Your Goal: Help students arrive by the 8:30 deadline through effective feedback.</p>
+              <p>After working with all students, you'll provide your overall assessment of which approaches work best.</p>
+          </div>
+          <div className="mt-8">
+            <Button onClick={onStart} variant="secondary">Begin Training</Button>
+          </div>
+        </Card>
+      );
+
+      const ExperimentPhase = ({ student, studentNumber, totalStudents, onResponse, onNextStudent }) => {
+          const [showOutcome, setShowOutcome] = useState(false);
+          const [isAnimating, setIsAnimating] = useState(true);
+
+          useEffect(() => {
+              setShowOutcome(false);
+              setIsAnimating(true);
+          }, [student.name]);
+
+          const handleResponseClick = (response) => {
+              onResponse(response);
+              setShowOutcome(true);
+          };
+
+          const handleAnimationComplete = useCallback(() => setIsAnimating(false), []);
+
+          const OutcomeDisplay = () => {
+              if (!student.finalTime || !student.initialTime) return null;
+              const change = student.finalTime - student.initialTime;
+              let changeText, changeColor;
+
+              if (change < -2) {
+                  changeText = `Improved by ${Math.abs(change)} minutes!`;
+                  changeColor = 'text-uva-green';
+              } else if (change > 2) {
+                  changeText = `Arrived ${change} minutes later`;
+                  changeColor = 'text-uva-red';
+              } else {
+                  changeText = 'About the same time';
+                  changeColor = 'text-slate-600';
+              }
+
+              return (
+                  <div className="mt-6 text-center bg-slate-50 p-6 rounded-lg animate-fade-in">
+                      <h3 className="text-xl font-bold text-uva-blue">The Next Day...</h3>
+                      <p className="mt-2 text-slate-600 mb-4">This student arrived at:</p>
+                      <ClockDisplay targetMinutes={student.finalTime} animate={false} />
+                      <p className={`text-lg font-bold mt-4 ${changeColor}`}>{changeText}</p>
+                  </div>
+              );
+          };
+
+          return (
+              <Card className="p-6 md:p-8">
+                  <ProgressBar current={studentNumber} total={totalStudents} />
+                  <h2 className="text-center text-4xl font-bold text-uva-blue mt-4">{student.name}</h2>
+                  <div className="mt-6 text-center">
+                      <div className="flex justify-between items-center text-sm font-semibold text-slate-600 bg-slate-100 px-4 py-2 rounded-md">
+                          <span>Today's Arrival Time:</span>
+                          <span>Encouraged: by 8:25 | Required: by 8:30</span>
+                      </div>
+                      <div className="mt-4">
+                          <ClockDisplay targetMinutes={student.initialTime} onAnimationComplete={handleAnimationComplete} />
+                      </div>
+                  </div>
+
+                  {!showOutcome ? (
+                      <div className="mt-8 animate-fade-in">
+                          <h3 className="text-center text-xl font-bold text-uva-blue mb-4">How do you respond to this student?</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                              {Object.keys(RESPONSE_TEXTS).map(key => (
+                                  <button
+                                      key={key}
+                                      onClick={() => handleResponseClick(key)}
+                                      disabled={isAnimating}
+                                      className={`font-bold py-3 px-2 rounded-lg transition-all duration-200 uppercase text-sm disabled:opacity-50 disabled:cursor-not-allowed ${RESPONSE_COLORS[key]}`}
+                                  >
+                                      {RESPONSE_TEXTS[key]}
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                  ) : (
+                      <>
+                          <OutcomeDisplay />
+                          <div className="mt-8">
+                              <Button onClick={onNextStudent}>
+                                 {studentNumber < totalStudents ? 'Next Student' : 'Finish & See Summary'}
+                              </Button>
+                          </div>
+                      </>
+                  )}
+              </Card>
+          );
+      };
+
+      const ResultsPreviewPhase = ({ studentData, onComplete }) => {
+          const [ratings, setRatings] = useState({ praise: null, reprimand: null });
+
+          const handleSelect = (type, effectiveness) => {
+              setRatings(prev => ({ ...prev, [type]: effectiveness }));
+          };
+
+          const { praiseAvg, reprimandAvg } = useMemo(() => {
+              const praiseOutcomes = studentData.filter(s => s.response?.includes('praise') && s.finalTime && s.initialTime);
+              const reprimandOutcomes = studentData.filter(s => s.response?.includes('reprimand') && s.finalTime && s.initialTime);
+              const calcAvg = (outcomes) => outcomes.length > 0 ? outcomes.reduce((sum, s) => sum + (s.finalTime - s.initialTime), 0) / outcomes.length : 0;
+              return { praiseAvg: calcAvg(praiseOutcomes), reprimandAvg: calcAvg(reprimandOutcomes) };
+          }, [studentData]);
+          
+          const isComplete = ratings.praise !== null && ratings.reprimand !== null;
+
+          return (
+              <Card className="p-8 md:p-10">
+                  <h1 className="text-3xl font-bold text-center text-uva-blue">Your Results Summary</h1>
+                  <div className="mt-6 bg-slate-50 p-4 rounded-lg max-h-60 overflow-y-auto">
+                      <h3 className="text-xl font-bold text-uva-blue mb-2">Individual Student Results</h3>
+                      <ul className="space-y-1 text-sm text-slate-700">
+                          {studentData.map(s => {
+                              const change = s.finalTime - s.initialTime;
+                              const changeText = change > 0 ? `+${change} min` : `${change} min`;
+                              const changeColor = change > 0 ? 'text-uva-red' : 'text-uva-green';
+                              return (
+                                  <li key={s.name} className="flex justify-between items-center p-1 bg-white rounded">
+                                      <span><strong>{s.name}:</strong> {formatTime(s.initialTime)} &rarr; {RESPONSE_TEXTS[s.response]} &rarr; {formatTime(s.finalTime)}</span>
+                                      <span className={`font-bold ${changeColor}`}>({changeText})</span>
+                                  </li>
+                              );
+                          })}
+                      </ul>
+                  </div>
+                  <div className="mt-4 text-center font-semibold text-slate-800 space-y-2">
+                       {praiseAvg !== 0 && <p>On average, after you <span className="font-bold text-uva-orange">praised</span> students, they arrived <span className={`font-bold ${praiseAvg > 0 ? "text-uva-red" : "text-uva-green"}`}>{Math.abs(praiseAvg).toFixed(1)} minutes {praiseAvg > 0 ? 'later' : 'earlier'}</span>.</p>}
+                       {reprimandAvg !== 0 && <p>On average, after you <span className="font-bold text-uva-orange">reprimanded</span> students, they arrived <span className={`font-bold ${reprimandAvg > 0 ? "text-uva-red" : "text-uva-green"}`}>{Math.abs(reprimandAvg).toFixed(1)} minutes {reprimandAvg > 0 ? 'later' : 'earlier'}</span>.</p>}
+                  </div>
+                  <div className="mt-8 border-t-2 border-uva-orange pt-6">
+                       <h3 className="text-xl font-bold text-center text-uva-blue">Based on these results, what is your assessment?</h3>
+                       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                          { (['praise', 'reprimand']).map(type => (
+                              <div key={type} className="bg-slate-100 p-4 rounded-lg">
+                                  <h4 className="font-bold text-center text-uva-blue capitalize">Overall, was {type} effective?</h4>
+                                  <div className="mt-3 grid grid-cols-2 gap-2">
+                                      <button onClick={() => handleSelect(type, 'effective')} className={`p-2 rounded font-bold transition ${ratings[type] === 'effective' ? 'bg-uva-orange text-white' : 'bg-white hover:bg-slate-200 text-uva-blue'}`}>Generally Effective</button>
+                                      <button onClick={() => handleSelect(type, 'ineffective')} className={`p-2 rounded font-bold transition ${ratings[type] === 'ineffective' ? 'bg-uva-blue text-white' : 'bg-white hover:bg-slate-200 text-uva-blue'}`}>Generally Ineffective</button>
+                                  </div>
+                              </div>
+                          ))}
+                       </div>
+                  </div>
+                  <div className="mt-8">
+                      <Button onClick={() => onComplete(ratings)} disabled={!isComplete}>See Full Analysis</Button>
+                  </div>
+              </Card>
+          );
+      };
+      
+      const FinalResultsPhase = ({ ratings, onReset }) => (
+        <Card className="p-8 md:p-10">
+          <h1 className="text-3xl font-bold text-center text-uva-blue">Your Experience vs. Reality</h1>
+          <div className="mt-6 bg-slate-50 p-4 rounded-lg text-center">
+            <h3 className="text-xl font-bold text-uva-blue">Your Assessment</h3>
+            <p className="mt-2 text-slate-700"><strong>Praise:</strong> You rated praise as generally <span className="font-bold capitalize text-uva-orange">{ratings.praise || '...'}</span>.</p>
+            <p className="text-slate-700"><strong>Reprimand:</strong> You rated reprimand as generally <span className="font-bold capitalize text-uva-blue">{ratings.reprimand || '...'}</span>.</p>
+          </div>
+          <div className="mt-6 text-slate-700 space-y-4">
+            <h3 className="text-2xl font-bold text-uva-orange">What Really Happened?</h3>
+            <p className="font-semibold text-lg">All student arrival times were <strong className="text-uva-blue">completely random</strong> — neither your praise nor reprimand had any real effect!</p>
+            <p>Most people in this situation experience <strong className="text-uva-blue">"regression to the mean"</strong>. This is the statistical tendency for extreme performances to be followed by more average performances, simply by chance.</p>
+            <p>This creates a powerful, systematic illusion:</p>
+            <ul className="list-disc list-inside space-y-2 pl-4 bg-blue-50/50 p-4 rounded-md border-l-4 border-uva-orange">
+              <li><strong>Praise often appears harmful</strong> because you praise students after an unusually early arrival (an extreme "good" performance). Their next, more average, arrival time will likely be later, making the praise seem ineffective.</li>
+              <li><strong>Reprimand often appears helpful</strong> because you reprimand students after an unusually late arrival (an extreme "poor" performance). Their next, more average, arrival time will likely be earlier, making the punishment seem effective.</li>
+            </ul>
+            <div className="pt-4 border-t-2 border-slate-200">
+                <h4 className="text-xl font-bold text-uva-blue">Leadership Implications</h4>
+                <p className="mt-2">This "specious learning" demonstrates how leaders can develop false confidence in ineffective strategies based on random variation. In organizations, this can lead to an over-reliance on criticism while under-valuing positive reinforcement. Understanding how situations shape our perceptions helps leaders make more evidence-based decisions rather than relying on misleading experiences alone.</p>
+            </div>
+          </div>
+          <div className="mt-8">
+            <Button onClick={onReset} variant="secondary">Try Again</Button>
+          </div>
+        </Card>
+      );
+
+      // **********************************
+      // MAIN APP COMPONENT
+      // **********************************
+      const App = () => {
+          const [phase, setPhase] = useState('intro');
+          const [studentData, setStudentData] = useState([]);
+          const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
+          const [summaryRatings, setSummaryRatings] = useState({ praise: null, reprimand: null });
+
+          const handleStartExperiment = useCallback(() => {
+              setCurrentStudentIndex(0);
+              setStudentData(STUDENTS.map(name => ({
+                  name,
+                  initialTime: generateArrivalTime(),
+                  response: null,
+                  finalTime: null,
+              })));
+              setSummaryRatings({ praise: null, reprimand: null });
+              setPhase('experiment');
+          }, []);
+
+          const handleResponse = useCallback((response) => {
+              setStudentData(prevData => {
+                  const newData = [...prevData];
+                  newData[currentStudentIndex] = {
+                      ...newData[currentStudentIndex],
+                      response: response,
+                      finalTime: generateArrivalTime(),
+                  };
+                  return newData;
+              });
+          }, [currentStudentIndex]);
+
+          const handleNextStudent = useCallback(() => {
+              if (currentStudentIndex < STUDENTS.length - 1) {
+                  setCurrentStudentIndex(prevIndex => prevIndex + 1);
+              } else {
+                  setPhase('preview');
+              }
+          }, [currentStudentIndex]);
+          
+          const handleShowResults = useCallback((ratings) => {
+              setSummaryRatings(ratings);
+              setPhase('results');
+          }, []);
+
+          const renderPhase = () => {
+              switch (phase) {
+                  case 'intro': return <IntroPhase onStart={handleStartExperiment} />;
+                  case 'experiment': return <ExperimentPhase student={studentData[currentStudentIndex]} studentNumber={currentStudentIndex + 1} totalStudents={STUDENTS.length} onResponse={handleResponse} onNextStudent={handleNextStudent} />;
+                  case 'preview': return <ResultsPreviewPhase studentData={studentData} onComplete={handleShowResults} />;
+                  case 'results': return <FinalResultsPhase ratings={summaryRatings} onReset={handleStartExperiment} />;
+                  default: return <IntroPhase onStart={handleStartExperiment} />;
+              }
+          };
+
+          return (
+              <div className="min-h-screen flex items-center justify-center p-4 font-sans">
+                  <div className="w-full max-w-4xl mx-auto">
+                      {renderPhase()}
+                  </div>
+              </div>
+          );
+      };
+
+      // **********************************
+      // RENDER THE APP
+      // **********************************
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
+
+    </script>
+</body>
+</html>
