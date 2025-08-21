@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="An interactive web application designed for teacher training, simulating student punctuality scenarios to study the perceived effectiveness of praise versus reprimand, based on the psychological principle of regression to the mean." />
     <title>Teacher Training Simulation</title>
     
     <!-- Google Fonts -->
@@ -14,16 +15,19 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Configure Tailwind to use UVA brand colors
+      // Configure Tailwind to use UVA brand colors and accessible variations
       tailwind.config = {
         theme: {
           extend: {
             colors: {
               'uva-blue': '#232D4B',
               'uva-orange': '#E57200',
+              'uva-orange-dark': '#C55A00', // Accessible background for white text
               'uva-blue-light': '#C8CBD2',
               'uva-red': '#DF1E43',
+              'uva-red-dark': '#B61633', // Accessible text on light backgrounds
               'uva-green': '#62BB46',
+              'uva-green-dark': '#3A7D24', // Accessible text on light backgrounds
             },
             fontFamily: {
               sans: ['Source Sans 3', 'sans-serif'],
@@ -84,10 +88,10 @@
       };
 
       const RESPONSE_COLORS = {
-        'strong-praise': 'bg-uva-orange hover:bg-orange-600 text-white',
-        'mild-praise': 'bg-uva-orange/80 hover:bg-uva-orange text-white',
+        'strong-praise': 'bg-uva-orange-dark hover:bg-uva-orange text-white',
+        'mild-praise': 'bg-orange-200 text-orange-800 hover:bg-orange-300',
         'no-comment': 'bg-uva-blue-light hover:bg-slate-400 text-uva-blue',
-        'mild-reprimand': 'bg-uva-blue/80 hover:bg-uva-blue text-white',
+        'mild-reprimand': 'bg-sky-200 text-sky-800 hover:bg-sky-300',
         'strong-reprimand': 'bg-uva-blue hover:bg-slate-800 text-white',
       };
 
@@ -111,7 +115,7 @@
         const baseClasses = 'w-full text-lg font-bold py-3 px-6 rounded-lg transition-transform duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100';
         const variantClasses = {
           primary: 'bg-uva-blue text-white hover:bg-slate-800 focus:ring-uva-orange/50',
-          secondary: 'bg-uva-orange text-white hover:bg-orange-600 focus:ring-uva-blue/50',
+          secondary: 'bg-uva-orange-dark text-white hover:bg-orange-600 focus:ring-uva-blue/50',
         };
         return (
           <button className={`${baseClasses} ${variantClasses[variant]} ${className || ''}`} {...props}>
@@ -123,14 +127,18 @@
       const ProgressBar = ({ current, total }) => {
         const percentage = (current / total) * 100;
         return (
-          <div className="mb-4">
-            <p className="text-center text-sm font-semibold text-uva-orange mb-2">
+          <div className="mb-4" aria-label={`Student ${current} of ${total}`}>
+            <p className="text-center text-sm font-semibold text-orange-600 mb-2" aria-hidden="true">
               Student {current} of {total}
             </p>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
                 className="bg-uva-blue h-2.5 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${percentage}%` }}
+                role="progressbar"
+                aria-valuenow={current}
+                aria-valuemin="1"
+                aria-valuemax={total}
               ></div>
             </div>
           </div>
@@ -166,8 +174,8 @@
               return () => clearInterval(animationInterval);
           }, [targetMinutes, animate, onAnimationComplete]);
 
-          const timeColor = targetMinutes > 30 ? 'text-uva-red' : 'text-uva-green';
-          const borderColor = targetMinutes > 30 ? 'border-uva-red' : 'border-uva-green';
+          const timeColor = targetMinutes > 30 ? 'text-uva-red-dark' : 'text-uva-green-dark';
+          const borderColor = targetMinutes > 30 ? 'border-uva-red-dark' : 'border-uva-green-dark';
           const containerClasses = `font-mono text-5xl sm:text-7xl font-bold text-center bg-slate-100 p-6 rounded-lg border-4 transition-colors duration-300 ${isAnimating ? 'text-slate-800 border-slate-300' : `${timeColor} ${borderColor}`}`;
           
           return (
@@ -182,12 +190,12 @@
       // **********************************
       const IntroPhase = ({ onStart }) => (
         <Card className="p-8 md:p-12">
-          <div className="text-center">
+          <header className="text-center">
             <h1 className="text-3xl md:text-4xl font-bold text-uva-blue">Teacher Training Simulation</h1>
-            <h2 className="text-xl md:text-2xl font-semibold text-uva-orange mt-1">Student Punctuality Intervention Study</h2>
-          </div>
-          <div className="mt-8 text-slate-700 space-y-4 text-left bg-blue-50/50 p-6 rounded-lg border border-uva-blue-light">
-              <h3 className="text-xl font-bold text-uva-blue">Welcome, Teacher!</h3>
+            <p className="text-xl md:text-2xl font-semibold text-slate-700 mt-1">Student Punctuality Intervention Study</p>
+          </header>
+          <section className="mt-8 text-slate-700 space-y-4 text-left bg-blue-50/50 p-6 rounded-lg border border-uva-blue-light" aria-labelledby="intro-heading">
+              <h2 id="intro-heading" className="text-xl font-bold text-uva-blue">Welcome, Teacher!</h2>
               <p>You will work with 11 different students who have been arriving late to class. You encourage students to arrive by 8:25, so they have time to get set up. But school rules are that you must arrive by 8:30.</p>
               <p className="font-semibold">For each student, you will:</p>
               <ol className="list-decimal list-inside space-y-2 pl-4">
@@ -198,14 +206,14 @@
               </ol>
               <p className="font-bold text-uva-blue">Your Goal: Help students arrive by the 8:30 deadline through effective feedback.</p>
               <p>After working with all students, you'll provide your overall assessment of which approaches work best.</p>
-          </div>
+          </section>
           <div className="mt-8">
             <Button onClick={onStart} variant="secondary">Begin Training</Button>
           </div>
-          <div className="mt-6 text-center text-xs text-slate-500">
+          <footer className="mt-6 text-center text-xs text-slate-500">
             <p>This simulation is based on the following paper:</p>
-            <p>Schaffner, P. E. (1985). Specious learning about reward and punishment. <span className="italic">Journal of Personality and Social Psychology, 48</span>, 1377-1386.</p>
-          </div>
+            <p>Schaffner, P. E. (1985). Specious learning about reward and punishment. <cite className="italic">Journal of Personality and Social Psychology, 48</cite>, 1377-1386.</p>
+          </footer>
         </Card>
       );
 
@@ -232,22 +240,22 @@
 
               if (change < -2) {
                   changeText = `Improved by ${Math.abs(change)} minutes!`;
-                  changeColor = 'text-uva-green';
+                  changeColor = 'text-uva-green-dark';
               } else if (change > 2) {
                   changeText = `Arrived ${change} minutes later`;
-                  changeColor = 'text-uva-red';
+                  changeColor = 'text-uva-red-dark';
               } else {
                   changeText = 'About the same time';
                   changeColor = 'text-slate-600';
               }
 
               return (
-                  <div className="mt-6 text-center bg-slate-50 p-6 rounded-lg animate-fade-in">
-                      <h3 className="text-xl font-bold text-uva-blue">The Next Day...</h3>
+                  <section className="mt-6 text-center bg-slate-50 p-6 rounded-lg animate-fade-in" aria-labelledby="outcome-heading">
+                      <h3 id="outcome-heading" className="text-xl font-bold text-uva-blue">The Next Day...</h3>
                       <p className="mt-2 text-slate-600 mb-4">This student arrived at:</p>
                       <ClockDisplay targetMinutes={student.finalTime} animate={false} />
                       <p className={`text-lg font-bold mt-4 ${changeColor}`}>{changeText}</p>
-                  </div>
+                  </section>
               );
           };
 
@@ -255,7 +263,8 @@
               <Card className="p-6 md:p-8">
                   <ProgressBar current={studentNumber} total={totalStudents} />
                   <h2 className="text-center text-4xl font-bold text-uva-blue mt-4">{student.name}</h2>
-                  <div className="mt-6 text-center">
+                  <section className="mt-6 text-center" aria-labelledby="arrival-heading">
+                      <h3 id="arrival-heading" className="sr-only">Student Arrival Time</h3>
                       <div className="flex justify-between items-center text-sm font-semibold text-slate-600 bg-slate-100 px-4 py-2 rounded-md">
                           <span>Today's Arrival Time:</span>
                           <span>Encouraged: by 8:25 | Required: by 8:30</span>
@@ -263,11 +272,11 @@
                       <div className="mt-4">
                           <ClockDisplay targetMinutes={student.initialTime} onAnimationComplete={handleAnimationComplete} />
                       </div>
-                  </div>
+                  </section>
 
                   {!showOutcome ? (
-                      <div className="mt-8 animate-fade-in">
-                          <h3 className="text-center text-xl font-bold text-uva-blue mb-4">How do you respond to this student?</h3>
+                      <section className="mt-8 animate-fade-in" aria-labelledby="response-heading">
+                          <h3 id="response-heading" className="text-center text-xl font-bold text-uva-blue mb-4">How do you respond to this student?</h3>
                           <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
                               {Object.keys(RESPONSE_TEXTS).map(key => (
                                   <button
@@ -280,7 +289,7 @@
                                   </button>
                               ))}
                           </div>
-                      </div>
+                      </section>
                   ) : (
                       <>
                           <OutcomeDisplay />
@@ -313,14 +322,16 @@
 
           return (
               <Card className="p-8 md:p-10">
-                  <h1 className="text-3xl font-bold text-center text-uva-blue">Your Results Summary</h1>
-                  <div className="mt-6 bg-slate-50 p-4 rounded-lg max-h-60 overflow-y-auto">
-                      <h3 className="text-xl font-bold text-uva-blue mb-2">Individual Student Results</h3>
+                  <header>
+                    <h2 className="text-3xl font-bold text-center text-uva-blue">Your Results Summary</h2>
+                  </header>
+                  <section className="mt-6 bg-slate-50 p-4 rounded-lg max-h-60 overflow-y-auto" aria-labelledby="student-results-heading">
+                      <h3 id="student-results-heading" className="text-xl font-bold text-uva-blue mb-2">Individual Student Results</h3>
                       <ul className="space-y-1 text-sm text-slate-700">
                           {studentData.map(s => {
                               const change = s.finalTime - s.initialTime;
                               const changeText = change > 0 ? `+${change} min` : `${change} min`;
-                              const changeColor = change > 0 ? 'text-uva-red' : 'text-uva-green';
+                              const changeColor = change > 2 ? 'text-uva-red-dark' : (change < -2 ? 'text-uva-green-dark' : 'text-slate-600');
                               return (
                                   <li key={s.name} className="flex justify-between items-center p-1 bg-white rounded">
                                       <span><strong>{s.name}:</strong> {formatTime(s.initialTime)} &rarr; {RESPONSE_TEXTS[s.response]} &rarr; {formatTime(s.finalTime)}</span>
@@ -329,25 +340,25 @@
                               );
                           })}
                       </ul>
-                  </div>
-                  <div className="mt-4 text-center font-semibold text-slate-800 space-y-2">
-                       {praiseAvg !== 0 && <p>On average, after you <span className="font-bold text-uva-orange">praised</span> students, they arrived <span className={`font-bold ${praiseAvg > 0 ? "text-uva-red" : "text-uva-green"}`}>{Math.abs(praiseAvg).toFixed(1)} minutes {praiseAvg > 0 ? 'later' : 'earlier'}</span>.</p>}
-                       {reprimandAvg !== 0 && <p>On average, after you <span className="font-bold text-uva-orange">reprimanded</span> students, they arrived <span className={`font-bold ${reprimandAvg > 0 ? "text-uva-red" : "text-uva-green"}`}>{Math.abs(reprimandAvg).toFixed(1)} minutes {reprimandAvg > 0 ? 'later' : 'earlier'}</span>.</p>}
-                  </div>
-                  <div className="mt-8 border-t-2 border-uva-orange pt-6">
-                       <h3 className="text-xl font-bold text-center text-uva-blue">Based on these results, what is your assessment?</h3>
+                  </section>
+                  <section className="mt-4 text-center font-semibold text-slate-800 space-y-2" aria-label="Average Results">
+                       {praiseAvg !== 0 && <p>On average, after you <span className="font-bold text-orange-600">praised</span> students, they arrived <span className={`font-bold ${praiseAvg > 0 ? "text-uva-red-dark" : "text-uva-green-dark"}`}>{Math.abs(praiseAvg).toFixed(1)} minutes {praiseAvg > 0 ? 'later' : 'earlier'}</span>.</p>}
+                       {reprimandAvg !== 0 && <p>On average, after you <span className="font-bold text-sky-700">reprimanded</span> students, they arrived <span className={`font-bold ${reprimandAvg > 0 ? "text-uva-red-dark" : "text-uva-green-dark"}`}>{Math.abs(reprimandAvg).toFixed(1)} minutes {reprimandAvg > 0 ? 'later' : 'earlier'}</span>.</p>}
+                  </section>
+                  <fieldset className="mt-8 border-t-2 border-uva-orange pt-6">
+                       <legend className="text-xl font-bold text-center text-uva-blue w-full">Based on these results, what is your assessment?</legend>
                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                           { (['praise', 'reprimand']).map(type => (
                               <div key={type} className="bg-slate-100 p-4 rounded-lg">
                                   <h4 className="font-bold text-center text-uva-blue capitalize">Overall, was {type} effective?</h4>
                                   <div className="mt-3 grid grid-cols-2 gap-2">
-                                      <button onClick={() => handleSelect(type, 'effective')} className={`p-2 rounded font-bold transition ${ratings[type] === 'effective' ? 'bg-uva-orange text-white' : 'bg-white hover:bg-slate-200 text-uva-blue'}`}>Generally Effective</button>
-                                      <button onClick={() => handleSelect(type, 'ineffective')} className={`p-2 rounded font-bold transition ${ratings[type] === 'ineffective' ? 'bg-uva-blue text-white' : 'bg-white hover:bg-slate-200 text-uva-blue'}`}>Generally Ineffective</button>
+                                      <button onClick={() => handleSelect(type, 'effective')} aria-pressed={ratings[type] === 'effective'} className={`p-2 rounded font-bold transition ${ratings[type] === 'effective' ? 'bg-uva-orange-dark text-white' : 'bg-white hover:bg-slate-200 text-uva-blue'}`}>Generally Effective</button>
+                                      <button onClick={() => handleSelect(type, 'ineffective')} aria-pressed={ratings[type] === 'ineffective'} className={`p-2 rounded font-bold transition ${ratings[type] === 'ineffective' ? 'bg-uva-blue text-white' : 'bg-white hover:bg-slate-200 text-uva-blue'}`}>Generally Ineffective</button>
                                   </div>
                               </div>
                           ))}
                        </div>
-                  </div>
+                  </fieldset>
                   <div className="mt-8">
                       <Button onClick={() => onComplete(ratings)} disabled={!isComplete}>See Full Analysis</Button>
                   </div>
@@ -357,14 +368,16 @@
       
       const FinalResultsPhase = ({ ratings, onReset }) => (
         <Card className="p-8 md:p-10">
-          <h1 className="text-3xl font-bold text-center text-uva-blue">Your Experience vs. Reality</h1>
-          <div className="mt-6 bg-slate-50 p-4 rounded-lg text-center">
-            <h3 className="text-xl font-bold text-uva-blue">Your Assessment</h3>
-            <p className="mt-2 text-slate-700"><strong>Praise:</strong> You rated praise as generally <span className="font-bold capitalize text-uva-orange">{ratings.praise || '...'}</span>.</p>
-            <p className="text-slate-700"><strong>Reprimand:</strong> You rated reprimand as generally <span className="font-bold capitalize text-uva-blue">{ratings.reprimand || '...'}</span>.</p>
-          </div>
-          <div className="mt-6 text-slate-700 space-y-4">
-            <h3 className="text-2xl font-bold text-uva-orange">What Really Happened?</h3>
+          <header>
+            <h2 className="text-3xl font-bold text-center text-uva-blue">Your Experience vs. Reality</h2>
+          </header>
+          <section className="mt-6 bg-slate-50 p-4 rounded-lg text-center" aria-labelledby="assessment-heading">
+            <h3 id="assessment-heading" className="text-xl font-bold text-uva-blue">Your Assessment</h3>
+            <p className="mt-2 text-slate-700"><strong>Praise:</strong> You rated praise as generally <span className="font-bold capitalize text-orange-600 underline">{ratings.praise || '...'}</span>.</p>
+            <p className="text-slate-700"><strong>Reprimand:</strong> You rated reprimand as generally <span className="font-bold capitalize text-uva-blue underline">{ratings.reprimand || '...'}</span>.</p>
+          </section>
+          <section className="mt-6 text-slate-700 space-y-4" aria-labelledby="explanation-heading">
+            <h3 id="explanation-heading" className="text-2xl font-bold text-orange-600">What Really Happened?</h3>
             <p className="font-semibold text-lg">All student arrival times were <strong className="text-uva-blue">completely random</strong> — neither your praise nor reprimand had any real effect!</p>
             <p>Most people in this situation experience <strong className="text-uva-blue">"regression to the mean"</strong>. This is the statistical tendency for extreme performances to be followed by more average performances, simply by chance.</p>
             <p>This creates a powerful, systematic illusion:</p>
@@ -376,7 +389,7 @@
                 <h4 className="text-xl font-bold text-uva-blue">Leadership Implications</h4>
                 <p className="mt-2">This "specious learning" demonstrates how leaders can develop false confidence in ineffective strategies based on random variation. In organizations, this can lead to an over-reliance on criticism while under-valuing positive reinforcement. Understanding how situations shape our perceptions helps leaders make more evidence-based decisions rather than relying on misleading experiences alone.</p>
             </div>
-          </div>
+          </section>
           <div className="mt-8">
             <Button onClick={onReset} variant="secondary">Try Again</Button>
           </div>
@@ -440,11 +453,11 @@
           };
 
           return (
-              <div className="min-h-screen flex items-center justify-center p-4 font-sans">
+              <main className="min-h-screen flex items-center justify-center p-4 font-sans">
                   <div className="w-full max-w-4xl mx-auto">
                       {renderPhase()}
                   </div>
-              </div>
+              </main>
           );
       };
 
